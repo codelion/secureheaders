@@ -7,15 +7,15 @@ module SecureHeaders
     include SecureHeaders::HashHelper
     SECURE_HEADERS_RAKE_TASK = "rake secure_headers:generate_hashes"
 
-    def nonced_style_tag(content = nil, &block)
-      nonced_tag(content, :style, block)
+    def nonced_style_tag(content = nil, options = {}, &block)
+      nonced_tag(content, options, :style, block)
     end
 
-    def nonced_javascript_tag(content = nil, &block)
-      nonced_tag(content, :script, block)
+    def nonced_javascript_tag(content = nil, options = {}, &block)
+      nonced_tag(content, options, :script, block)
     end
 
-    def hashed_javascript_tag(raise_error_on_unrecognized_hash = false, &block)
+    def hashed_javascript_tag(raise_error_on_unrecognized_hash = false, options = {}, &block)
       content = capture(&block)
 
       if ['development', 'test'].include?(ENV["RAILS_ENV"])
@@ -33,19 +33,24 @@ module SecureHeaders
         end
       end
 
-      content_tag :script, content
+      javascript_tag content, options
     end
 
     private
 
-    def nonced_tag(content, type, block)
+    def nonced_tag(content, options, type, block)
       content = if block
+        # when using a block, the first argument will contain the options value
+        options = content
         capture(&block)
       else
         content.html_safe # :'(
       end
 
-      content_tag type, content, :nonce => @content_security_policy_nonce
+      options ||= {}
+      options.merge!(:nonce => @content_security_policy_nonce)
+
+      content_tag type, content, options
     end
 
     def unexpected_hash_error_message(file_path, hash_value, content)
